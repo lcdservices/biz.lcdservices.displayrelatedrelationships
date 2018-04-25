@@ -91,14 +91,14 @@ function displayrelatedrelationships_civicrm_alterContent(&$content, $context, $
         $content1 = substr($content, 0, $marker);
         $content3 = substr($content, $marker);
         $content2 = '
-          <h3>' . ts('Related Relationship') . '</h3>
+          <h3>' . ts('Related Contact Relationships') . '</h3>
 
           <table class="selector row-highlight">
             <thead class="sticky">
               <tr>
                 <th scope="col">' . ts('Contact Name') . '</th>
                 <th scope="col">' . ts('Relationship Type') . '</th>
-                <th scope="col">' . ts('Realted Contact') . '</th>
+                <th scope="col">' . ts('Related Contact') . '</th>
               </tr>
             </thead>';
         $contact_id = $object->getVar('_contactId');
@@ -117,39 +117,27 @@ function displayrelatedrelationships_civicrm_alterContent(&$content, $context, $
         // Get relationships where this contact is "A":
         $params = array(
           'sequential' => 1,
-          'contact_id_a' => $contact_id,
-          'relationship_type_id' => array('IN' => array_keys($relTypes)),
+          'contact_id' => $contact_id,
           'options' => array('limit' => 0),
         );
-        displayrelatedrelationships_find_relationships($params, $related_contact_ids, $relTypes);
-        // Get relationships where this contact is "B":
-        unset($params['contact_id_a']);
-        $params['contact_id_b'] = $contact_id;
-        
-        displayrelatedrelationships_find_relationships($params, $related_contact_ids, $relTypes);
+        _displayrelatedrelationships_find_relationships($params, $related_contact_ids, $relTypes);
         
         // Template for the links in the table of contributions.
         $rows = array();
         $toggle = 'even';
         $related_contact = array();
+
         foreach ($related_contact_ids as $related_contact) {
-          
           $related_contact_id = $related_contact['contact_id'];
           $displayName = $related_contact['display_name'];
   
-          try{
-            $realted_params = array(
+          try {
+            $related_params = array(
               'sequential' => 1,
-              'contact_id_a' => $related_contact['contact_id'],
-              'relationship_type_id' => array('IN' => array_keys($relTypes)),
+              'contact_id' => $related_contact['contact_id'],
               'options' => array('limit' => 0),
             );
-            displayrelatedrelationships_contact_relationships($realted_params, $related_realtion_ids, $relTypes);
-            // Get relationships where this contact is "B":
-            unset($realted_params['contact_id_a']);
-            $realted_params['contact_id_b'] = $related_contact['contact_id'];
-            
-            displayrelatedrelationships_contact_relationships($realted_params, $related_realtion_ids, $relTypes);
+            _displayrelatedrelationships_contact_relationships($related_params, $related_relation_ids, $relTypes);
           }
           catch (CiviCRM_API3_Exception $e) {
             // Handle error here.
@@ -163,16 +151,17 @@ function displayrelatedrelationships_civicrm_alterContent(&$content, $context, $
               'error_data' => $errorData,
             );
           }
+
           try {
-            foreach ($related_realtion_ids as $value) {
+            foreach ($related_relation_ids as $value) {
               $related_contact = $value['contact_id'];
-              $realted_displayName = $value['display_name'];
+              $related_displayName = $value['display_name'];
               $related_relationship_name = $value['relationship_name'];
               $toggle = ($toggle == 'odd') ? 'even' : 'odd';
               $rows[] = '<tr id="rowid' . $related_contact_id . '"class="' . $toggle . '-row crm-relationship_' . $related_contact_id . '">
                   <td class="left crm-note-contact"><span class="nowrap">' . CRM_Utils_System::href($displayName, 'civicrm/contact/view/', 'reset=1&cid=' . $related_contact_id, FALSE) . '</span> </td>
                   <td class="left crm-note-realtionship"><span class="nowrap">' . $related_relationship_name . '</span> </td>
-                  <td class="left crm-note-contact"><span class="nowrap">' . CRM_Utils_System::href($realted_displayName, 'civicrm/contact/view/', 'reset=1&cid=' . $related_contact, FALSE) . '</span> </td>
+                  <td class="left crm-note-contact"><span class="nowrap">' . CRM_Utils_System::href($related_displayName, 'civicrm/contact/view/', 'reset=1&cid=' . $related_contact, FALSE) . '</span> </td>
                 </tr>';
             }
           }
@@ -181,7 +170,10 @@ function displayrelatedrelationships_civicrm_alterContent(&$content, $context, $
           }
         }
         
-        $empty_message = '<h3>' . ts('Related Realtionships') . '</h3>' . '<div class="messages status no-popup"><div class="icon inform-icon"></div>There are no Related Realtionships for this contact.   </div>';
+        $empty_message = '<h3>' . ts('Related Contact Relationships') . '</h3>' .
+          '<div class="messages status no-popup"><div class="icon inform-icon">
+            There are no related relationships for this contact.
+          </div></div>';
 
         $content2 = empty($rows) ? $empty_message : $content2 . implode("\n", $rows) . '</table>';
 
@@ -201,39 +193,22 @@ function displayrelatedrelationships_civicrm_alterContent(&$content, $context, $
  * @param array $relTypes
  *   The available relationship types.
  */
-function displayrelatedrelationships_find_relationships($params, &$related_contact_ids, $relTypes) {
+function _displayrelatedrelationships_find_relationships($params, &$related_contact_ids, $relTypes) {
   try {
     $cid = CRM_Utils_Request::retrieve('cid', 'Positive');
     $relationships = civicrm_api3('Relationship', 'get', $params);
+    //Civi::log()->debug('', array('relationships' => $relationships));
+
     foreach ($relationships['values'] as $relationship) {
-      $relType = &$relTypes[$relationship['relationship_type_id']];
-      if($relationship['contact_id_a'] == $cid){
-        $related_contact_id = $relationship['contact_id_b'];
-        $relationship_name = $relType['label_a_b'];
+      if ($relationship['is_active']) {
+        $related_contact_ids[$relationship['id']] = [
+          'contact_id' => $relationship['cid'],
+          'display_name' => $relationship['display_name'],
+          'relationship_name' => $relationship['relation'],
+        ];
       }
-      else{
-        $related_contact_id = $relationship['contact_id_a'];
-        $relationship_name = $relType['label_b_a'];
-      }
-      list($displayName) = CRM_Contact_Page_View::getContactDetails($related_contact_id);
-      $related_contact_ids[] = array(
-        'contact_id' => $related_contact_id,
-        'display_name' => $displayName,
-        'relationship_name' => $relationship_name,
-      );
     }
-    $result = array();
-    foreach($related_contact_ids as $value){
-      $contact_id = $value['contact_id'];
-      if(isset($result[$contact_id]))
-        $index = ((count($result[$contact_id]) - 1) / 2) + 1;
-      else
-        $index = 1;
-      $result[$contact_id]['contact_id'] = $contact_id;
-      $result[$contact_id]['display_name'] = $value['display_name'];
-      $result[$contact_id]['relationship_name'][] = $value['relationship_name'];
-    }
-    $related_contact_ids = array_values($result);
+    //Civi::log()->debug('', array('$related_contact_ids' => $related_contact_ids));
   }
   catch (CiviCRM_API3_Exception $e) {
     CRM_Core_Error::debug_log_message('API Error finding relationships: ' . $e->getMessage());
@@ -249,23 +224,23 @@ function displayrelatedrelationships_find_relationships($params, &$related_conta
  * @param array $relTypes
  *   The available relationship types.
  */
-function displayrelatedrelationships_contact_relationships($params, &$related_realtion_ids, $relTypes) {
+function _displayrelatedrelationships_contact_relationships($params, &$related_relation_ids, $relTypes) {
   try {
     $cid = CRM_Utils_Request::retrieve('cid', 'Positive');
     $relationships = civicrm_api3('Relationship', 'get', $params);
-    $related_realtion_ids = array();
+    //Civi::log()->debug('_displayrelatedrelationships_contact_relationships', array('relationships' => $relationships));
+
+    $related_relation_ids = array();
     foreach ($relationships['values'] as $relationship) {
-      $relType = &$relTypes[$relationship['relationship_type_id']];
-      $contact_id = empty($params['contact_id_a']) ? $relationship['contact_id_a'] : $relationship['contact_id_b'];
-      list($displayName) = CRM_Contact_Page_View::getContactDetails($contact_id);
-      if($contact_id != $cid){
-        $related_realtion_ids[] = array(
-          'contact_id' => empty($params['contact_id_a']) ? $relationship['contact_id_a'] : $relationship['contact_id_b'],
-          'relationship_name' => empty($params['contact_id_a']) ? $relType['label_a_b'] : $relType['label_b_a'],
-          'display_name' => $displayName,
+      if($relationship['cid'] != $cid && $relationship['is_active']){
+        $related_relation_ids[$relationship['id']] = array(
+          'contact_id' => $relationship['cid'],
+          'relationship_name' => $relationship['relation'],
+          'display_name' => $relationship['display_name'],
         );
       }
     }
+    //Civi::log()->debug('_displayrelatedrelationships_contact_relationships', array('$related_relation_ids' => $related_relation_ids));
   }
   catch (CiviCRM_API3_Exception $e) {
     CRM_Core_Error::debug_log_message('API Error finding relationships: ' . $e->getMessage());
