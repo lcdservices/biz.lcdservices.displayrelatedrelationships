@@ -125,7 +125,6 @@ function displayrelatedrelationships_civicrm_alterContent(&$content, $context, $
         // Template for the links in the table of contributions.
         $rows = array();
         $toggle = 'even';
-        $related_contact = array();
 
         foreach ($related_contact_ids as $related_contact) {
           $related_contact_id = $related_contact['contact_id'];
@@ -158,11 +157,19 @@ function displayrelatedrelationships_civicrm_alterContent(&$content, $context, $
               $related_displayName = $value['display_name'];
               $related_relationship_name = $value['relationship_name'];
               $toggle = ($toggle == 'odd') ? 'even' : 'odd';
+              $description = (!empty($value['description'])) ? "<br /><span class='crm-rel-description description'>{$value['description']}</span>" : '';
+
               $rows[] = '<tr id="rowid' . $related_contact_id . '"class="' . $toggle . '-row crm-relationship_' . $related_contact_id . '">
-                  <td class="left crm-note-contact"><span class="nowrap">' . CRM_Utils_System::href($displayName, 'civicrm/contact/view/', 'reset=1&cid=' . $related_contact_id, FALSE) . '</span> </td>
-                  <td class="left crm-note-realtionship"><span class="nowrap">' . $related_relationship_name . '</span> </td>
-                  <td class="left crm-note-contact"><span class="nowrap">' . CRM_Utils_System::href($related_displayName, 'civicrm/contact/view/', 'reset=1&cid=' . $related_contact, FALSE) . '</span> </td>
-                </tr>';
+                <td class="left crm-rel-contact">
+                  <span class="nowrap">'.CRM_Utils_System::href($displayName, 'civicrm/contact/view/', 'reset=1&cid=' . $related_contact_id, FALSE).'</span>
+                </td>
+                <td class="left crm-rel-relationship">
+                  <span class="nowrap">'.$related_relationship_name.'</span>'.$description.'
+                </td>
+                <td class="left crm-rel-second-rel-contact">
+                  <span class="nowrap">'.CRM_Utils_System::href($related_displayName, 'civicrm/contact/view/', 'reset=1&cid=' . $related_contact, FALSE).'</span>
+                </td>
+              </tr>';
             }
           }
           catch (CiviCRM_API3_Exception $e) {
@@ -237,6 +244,7 @@ function _displayrelatedrelationships_contact_relationships($params, &$related_r
           'contact_id' => $relationship['cid'],
           'relationship_name' => $relationship['relation'],
           'display_name' => $relationship['display_name'],
+          'description' => $relationship['description'],
         );
       }
     }
