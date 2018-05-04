@@ -281,39 +281,24 @@ function _displayrelatedrelationships_find_relationships($params, &$related_cont
 function _displayrelatedrelationships_contact_relationships($params, &$related_relation_ids, $relTypes) {
   try {
     $cid = CRM_Utils_Request::retrieve('cid', 'Positive');
+    $excludedRel =  Civi::settings()->get('relTypes_excluded');
+    
     $relationships = civicrm_api3('Relationship', 'get', $params);
+    //Civi::log()->debug('_displayrelatedrelationships_contact_relationships', array('relationships' => $relationships));
 
     $related_relation_ids = array();
     foreach ($relationships['values'] as $relationship) {
-      
-      if($relationship['cid'] != $cid && $relationship['is_active']){
-        
-        $excluded_relation =  Civi::settings()->get('relTypes_excluded');
-        foreach($excluded_relation as $key=>$value){
-          $explode = explode('.', $value);
-          $relation_id = $explode[0];
-          $direction = explode('label_', $explode[1]);
-          $relation_direction = $direction[1];
-          
-          
-          
-          if($relationship['civicrm_relationship_type_id'] <> $relation_id && $relationship['rtype'] <> $relation_direction ){
-            
-          
-            $related_relation_ids[$relationship['id']] = array(
-              'contact_id' => $relationship['cid'],
-              'relationship_name' => $relationship['relation'],
-              'display_name' => $relationship['display_name'],
-              'description' => $relationship['description'],
-              'relTypeID' => $relationship['civicrm_relationship_type_id'],
-              'rtype' => $relationship['rtype'],
-              'excluded_relTypeID' => $relation_id,
-              'excluded_rtype' => $relation_direction,
-            );
-          }
-        }
+      $excluded_relation = $relationship['civicrm_relationship_type_id'].'.label_'.$relationship['rtype'];
+      if($relationship['cid'] != $cid && $relationship['is_active'] && !in_array($excluded_relation, $excludedRel) ){
+        $related_relation_ids[$relationship['id']] = array(
+          'contact_id' => $relationship['cid'],
+          'relationship_name' => $relationship['relation'],
+          'display_name' => $relationship['display_name'],
+          'description' => $relationship['description'],
+        );
       }
     }
+    //Civi::log()->debug('_displayrelatedrelationships_contact_relationships', array('$related_relation_ids' => $related_relation_ids));
   }
   catch (CiviCRM_API3_Exception $e) {
     CRM_Core_Error::debug_log_message('API Error finding relationships: ' . $e->getMessage());
