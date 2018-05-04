@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<menu>
+  <item>
+    <path>civicrm/admin/relatedrelationships</path>
+     <title>Manage Related Relationship Types</title>
+     <desc>Manage Related Relationship Types</desc>
+     <page_callback>CRM_Admin_Form_Setting_relatedrelationships</page_callback>
+     <adminGroup>Customize Data and Screens</adminGroup>
+     <icon>admin/small/rela_type.png</icon>
+     <weight>36</weight>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+</menu>
