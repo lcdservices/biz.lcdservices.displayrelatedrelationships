@@ -172,36 +172,35 @@ function displayrelatedrelationships_civicrm_alterContent(&$content, $context, $
           }
 
           try {
+            $header = _displayrelatedrelationships_get_fields_label();
             $rows[] = '<div class="crm-accordion-wrapper crm-custom_search_form-accordion">
                     <div class="crm-accordion-header crm-master-accordion-header">
                     '.CRM_Utils_System::href($displayName, 'civicrm/contact/view/', 'reset=1&cid=' . $related_contact_id, FALSE).'
                     </div><div class="crm-accordion-body">
                     <table class="selector row-highlight">
             <thead class="sticky">
-              <tr>
-                <th scope="col">' . ts('Contact Name') . '</th>
-                <th scope="col">' . ts('Relationship Type') . '</th>
-                <th scope="col">' . ts('Related Contact') . '</th>
-              </tr>
-            </thead>';
+              <tr>';
+              $rows[] = $header;
+              $rows[] ='</tr></thead>';
             foreach ($related_relation_ids as $value) {
               $related_contact = $value['contact_id'];
+              
+              $contact_detail = _displayrelatedrelationships_get_fields_value($related_contact);
+              
               $related_displayName = $value['display_name'];
               $related_relationship_name = $value['relationship_name'];
               $toggle = ($toggle == 'odd') ? 'even' : 'odd';
               $description = (!empty($value['description'])) ? "<br /><span class='crm-rel-description description'>{$value['description']}</span>" : '';
 
               $rows[] = '<tr id="rowid' . $related_contact_id . '"class="' . $toggle . '-row crm-relationship_' . $related_contact_id . '">
-                <td class="left crm-rel-contact">
-                  <span class="nowrap">'.CRM_Utils_System::href($displayName, 'civicrm/contact/view/', 'reset=1&cid=' . $related_contact_id, FALSE).'</span>
-                </td>
                 <td class="left crm-rel-relationship">
                   <span class="nowrap">'.$related_relationship_name.'</span>'.$description.'
                 </td>
                 <td class="left crm-rel-second-rel-contact">
                   <span class="nowrap">'.CRM_Utils_System::href($related_displayName, 'civicrm/contact/view/', 'reset=1&cid=' . $related_contact, FALSE).'</span>
-                </td>
-              </tr>';
+                </td>';
+              $rows[] = $contact_detail;
+              $rows[] = '</tr>';
             }
             $rows[] = '</table></div></div>';
           }
@@ -303,4 +302,51 @@ function _displayrelatedrelationships_contact_relationships($params, &$related_r
   catch (CiviCRM_API3_Exception $e) {
     CRM_Core_Error::debug_log_message('API Error finding relationships: ' . $e->getMessage());
   }
+}
+/**
+ * Get the fields set on Related Relationship Setting page
+ */
+function _displayrelatedrelationships_get_fields_label() {
+  $entities = array('contact','address');
+  $contact_fields = array();
+  foreach ($entities as $entity) {
+    $getFields = civicrm_api3($entity, 'getfields');
+    foreach ($getFields['values'] as $field => $info){
+      $contact_fields[$field] = $info['title'];
+    }
+  }
+    
+  $fields = Civi::settings()->get('contactFields_included');
+  $column_header = '';
+  $column_header .= '<th scope="col">' . ts('Relationship Type') . '</th>
+                <th scope="col">' . ts('Related Contact') . '</th>';
+  if($fields){
+    foreach($fields as $field_title) {
+      if(isset($contact_fields[$field_title])){
+        $column_header .= '<th scope="col">' . $contact_fields[$field_title] . '</th>';
+      }
+    }
+  }
+  return $column_header;
+}
+
+/**
+ * Get the fields set on Related Relationship Setting page
+ */
+function _displayrelatedrelationships_get_fields_value($contact_id) {
+  $fields = Civi::settings()->get('contactFields_included');
+  $contact_details = civicrm_api3('contact', 'getsingle', ['id'=>$contact_id]);
+  
+  $column_value = '';
+  if($fields){
+    foreach($fields as $field_title) {
+      if($field_title == 'gender_id') {
+        $field_title = 'gender';
+      }
+      $column_value .= '<td class="left crm-rel-second-rel-contact">
+      <span class="nowrap">'.$contact_details[$field_title].'</span>
+      </td>';
+    }
+  }
+  return $column_value;
 }
