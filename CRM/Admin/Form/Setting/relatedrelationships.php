@@ -68,8 +68,9 @@ class CRM_Admin_Form_Setting_relatedrelationships extends CRM_Admin_Form_Setting
         $relType[$value['id'].'.label_b_a'] = 'Relationship B to A : '.$value['label_b_a'];
       }
     }
+    asort($relType);
 
-    $this->addElement('advmultiselect', 'relTypes_excluded', ts('Select Relationship Type to Exclude'), $relType, array('class' => 'crm-select2', 'size' => 10, 'style' => 'width:300px', 'multiple' => 1));
+    $this->addElement('advmultiselect', 'relTypes_excluded', ts('Select Relationship Type to Exclude'), $relType, array('class' => 'crm-select', 'size' => 10, 'style' => 'width:300px', 'multiple' => 1));
     
     $entities = array(
       'contact',
@@ -83,7 +84,8 @@ class CRM_Admin_Form_Setting_relatedrelationships extends CRM_Admin_Form_Setting
         $fields[$field] = $info['title'];
       }
     }
-    $this->addElement('advmultiselect', 'contactFields_included', ts('Select Fields to Display'), $fields, array('class' => 'crm-select2', 'size' => 10, 'style' => 'width:300px', 'multiple' => 1));
+    asort($fields);
+    $this->addElement('advmultiselect', 'contactFields_included', ts('Select Fields to Display'), $fields, array('class' => 'crm-select', 'size' => 10, 'style' => 'width:300px', 'multiple' => 1));
    
     $this->addFormRule(array('CRM_Admin_Form_Setting_relatedrelationships', 'formRule'), $this);
     

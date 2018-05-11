@@ -9,6 +9,7 @@
  */
 
 require_once 'displayrelatedrelationships.civix.php';
+require_once 'CRM/Core/BAO/CustomField.php';
 
 /**
  * Implementation of hook_civicrm_config
@@ -88,7 +89,7 @@ function displayrelatedrelationships_civicrm_navigationMenu(&$navMenu) {
       'url'        => 'civicrm/admin/relatedrelationships',
       'parent'    => array('Administer', 'Customize Data and Screens'),
       'permission' => 'access CiviCRM',
-      'operator'   => 'AND',
+      'operator'   => NULL,
       'separator'  => NULL,
       'active'     => 1,
     ),
@@ -337,11 +338,35 @@ function _displayrelatedrelationships_get_fields_value($contact_id) {
   $fields = Civi::settings()->get('contactFields_included');
   $contact_details = civicrm_api3('contact', 'getsingle', ['id'=>$contact_id]);
   
+  $custom_fields = array_filter($fields, function ($v) {
+    return substr($v, 0, 7) === 'custom_';
+  });
+  $customFields = implode(',', $custom_fields);
+  $parameter = array('id' => $contact_id, 'return' => array($customFields));
+  $result = civicrm_api3('Contact', 'get', $parameter);
+  if(isset($result['values'])){
+    $customFieldValues = array();
+    foreach($result['values'][$contact_id] as $key=>$value){
+      if( in_array($key, $custom_fields) ){
+        $fieldsvalue = CRM_Core_BAO_CustomField::displayValue($value, $key, $entityId = $contact_id);
+        $customFieldValues[$key] = $fieldsvalue;
+      }
+      
+    }
+  }
+  $contact_details = $contact_details + $customFieldValues;
+  
   $column_value = '';
   if($fields){
     foreach($fields as $field_title) {
+      
       if($field_title == 'gender_id') {
         $field_title = 'gender';
+      }
+      if($field_title == 'birth_date') {
+        $getFields = civicrm_api3('contact', 'getfield', ['action' => 'get', 'name'=>'birth_date']);
+        $dateAttr = CRM_Core_SelectValues::date($getFields['values']['html']['formatType'], NULL, NULL, NULL, 'Input');
+        $contact_details[$field_title] = CRM_Utils_Date::customFormat($contact_details[$field_title], $dateAttr['smarty_view_format']);
       }
       $column_value .= '<td class="left crm-rel-second-rel-contact">
       <span class="nowrap">'.$contact_details[$field_title].'</span>
