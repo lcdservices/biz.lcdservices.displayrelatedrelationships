@@ -337,21 +337,27 @@ function _displayrelatedrelationships_get_fields_label() {
 function _displayrelatedrelationships_get_fields_value($contact_id) {
   $fields = Civi::settings()->get('contactFields_included');
   $contact_details = civicrm_api3('contact', 'getsingle', ['id'=>$contact_id]);
+  //Civi::log()->debug('_displayrelatedrelationships_get_fields_value', array('contact_details' => $contact_details));
   
   $custom_fields = array_filter($fields, function ($v) {
     return substr($v, 0, 7) === 'custom_';
   });
-  $customFields = implode(',', $custom_fields);
-  $parameter = array('id' => $contact_id, 'return' => array($customFields));
+  $parameter = array('id' => $contact_id, 'return' => array_values($custom_fields));
   $result = civicrm_api3('Contact', 'get', $parameter);
+
+  /*Civi::log()->debug('_displayrelatedrelationships_get_fields_value', array(
+    '$custom_fields' => $custom_fields,
+    '$parameter' => $parameter,
+    '$result' => $result,
+  ));*/
+
   if(isset($result['values'])){
     $customFieldValues = array();
     foreach($result['values'][$contact_id] as $key=>$value){
       if( in_array($key, $custom_fields) ){
-        $fieldsvalue = CRM_Core_BAO_CustomField::displayValue($value, $key, $entityId = $contact_id);
+        $fieldsvalue = CRM_Core_BAO_CustomField::displayValue($value, $key, $contact_id);
         $customFieldValues[$key] = $fieldsvalue;
       }
-      
     }
   }
   $contact_details = $contact_details + $customFieldValues;
