@@ -114,7 +114,7 @@ function displayrelatedrelationships_civicrm_alterContent(&$content, $context, $
   if ($context == 'page') {
     if ($tplName == 'CRM/Contact/Page/View/Relationship.tpl') {
       
-      if ($object->_action == 16) {
+      if ($object->getVar('_action') == 16) {
         $marker1 = strpos($content, 'div#contact-summary-relationship-tab');
         $marker = strpos($content, '</div', $marker1);
 
